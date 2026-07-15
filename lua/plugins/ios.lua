@@ -64,7 +64,7 @@ return {
       "folke/snacks.nvim", -- picker + SwiftUI/snapshot previews (LazyVim default)
       "nvim-treesitter/nvim-treesitter",
       "mfussenegger/nvim-dap",
-      "rcarriga/nvim-dap-ui",
+      { "rcarriga/nvim-dap-ui", dependencies = { "nvim-neotest/nvim-nio" } },
     },
     ft = { "swift", "objc", "objcpp" },
     cmd = {
@@ -90,6 +90,13 @@ return {
 
       -- Enable nvim-dap debugging (Xcode 16+ uses the built-in lldb-dap).
       require("xcodebuild.integrations.dap").setup()
+
+      -- Auto open/close the dap-ui panels around a debug session.
+      local dap, dapui = require("dap"), require("dapui")
+      dapui.setup()
+      dap.listeners.after.event_initialized["dapui_config"] = function() dapui.open() end
+      dap.listeners.before.event_terminated["dapui_config"] = function() dapui.close() end
+      dap.listeners.before.event_exited["dapui_config"] = function() dapui.close() end
     end,
     keys = {
       { "<leader>X", "<cmd>XcodebuildPicker<cr>", desc = "Xcodebuild Actions" },
@@ -115,6 +122,19 @@ return {
 
       { "<leader>xd", "<cmd>XcodebuildSelectDevice<cr>", desc = "Select Device" },
       { "<leader>xa", "<cmd>XcodebuildCodeActions<cr>", desc = "Show Code Actions" },
+
+      -- Debugging (nvim-dap driven by xcodebuild)
+      { "<leader>d;", function() require("xcodebuild.integrations.dap").toggle_breakpoint() end, desc = "Toggle Breakpoint" },
+      { "<leader>d:", function() require("xcodebuild.integrations.dap").toggle_message_breakpoint() end, desc = "Message Breakpoint" },
+      { "<leader>dd", "<cmd>XcodebuildBuildDebug<cr>", desc = "Build & Debug" },
+      { "<leader>dr", "<cmd>XcodebuildDebug<cr>", desc = "Debug (no build)" },
+      { "<leader>dt", function() require("xcodebuild.integrations.dap").debug_tests() end, desc = "Debug Tests" },
+      { "<leader>dx", function() require("xcodebuild.integrations.dap").terminate_session() end, desc = "Terminate Debug" },
+      { "<leader>dc", function() require("dap").continue() end, desc = "Continue" },
+      { "<leader>do", function() require("dap").step_over() end, desc = "Step Over" },
+      { "<leader>di", function() require("dap").step_into() end, desc = "Step Into" },
+      { "<leader>dO", function() require("dap").step_out() end, desc = "Step Out" },
+      { "<leader>du", function() require("dapui").toggle() end, desc = "Toggle Debug UI" },
     },
   },
 }

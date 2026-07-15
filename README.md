@@ -65,7 +65,10 @@ completion, `gd`, and diagnostics work across files.
 > Tip: if your scheme isn't listed, choose **`[Reload Schemes]`** in the picker
 > (Tuist often stores schemes at the workspace level).
 
-### Key bindings (prefix `<leader>x`)
+### Key bindings
+
+Quick reference below; the **full cheatsheet is in [`CHEATSHEET.md`](CHEATSHEET.md)**
+(build/run/test, debugging, LSP navigation, files, diagnostics).
 
 | Key | Action |
 |---|---|
@@ -75,7 +78,7 @@ completion, `gd`, and diagnostics work across files.
 | `<leader>xd` | Select device |
 | `<leader>xl` | Toggle build logs |
 | `<leader>xe` | Toggle test explorer |
-| `<leader>xc` / `<leader>xC` | Toggle / show code coverage |
+| `<leader>dd` / `<leader>d;` | Build & debug / toggle breakpoint |
 
 Run `:checkhealth xcodebuild` if anything misbehaves.
 
