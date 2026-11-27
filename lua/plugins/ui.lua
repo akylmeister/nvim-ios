@@ -126,30 +126,36 @@ local function apply_xcode_semantics()
   set({ "@attribute", "@variable.builtin" }, { fg = xc.attribute })
   set({ "@macro", "@keyword.directive" }, { fg = xc.macro })
 
-  -- Argument labels at call sites (`foo(with: x)`) are plain text in Xcode.
+  -- Plain text: argument labels at call sites (`foo(with: x)`) and internal
+  -- parameter names in declarations (`_ call: Call` → `call`), like Xcode.
+  -- `@variable.parameter.internal` comes from after/queries/swift/highlights.scm.
   local normal = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
-  set({ "XcodeArgLabel" }, { fg = normal.fg })
+  set({ "XcodeArgLabel", "@variable.parameter.internal" }, { fg = normal.fg })
 
   apply_explorer_theme()
 end
 
--- sourcekit-lsp emits argument labels (`func f(person name: String)`,
--- `f(person: x)`) as plain `function` semantic tokens — the same type as a
--- real function call — so they'd get the green "call" color. Use Treesitter
--- to tell them apart and recolor: declaration labels → parameter blue,
--- call-site labels → plain text.
+-- Swift parameter coloring on top of sourcekit-lsp semantic tokens:
+-- * argument labels (`func f(person name: String)`, `f(person: x)`) come as
+--   plain `function` tokens — the same type as a real call — so they'd be
+--   green. Recolor: declaration labels → parameter blue, call-site → plain.
+-- * internal parameter names (`name` above) must stay plain text even if the
+--   server marks them as `parameter` (which is colored blue).
 local function fix_swift_argument_labels(args)
   local token = args.data.token
-  if token.type ~= "function" or next(token.modifiers) ~= nil then
-    return
-  end
   if vim.bo[args.buf].filetype ~= "swift" then
     return
   end
+  local plain_fn = token.type == "function" and next(token.modifiers) == nil
   local hl
   for _, cap in ipairs(vim.treesitter.get_captures_at_pos(args.buf, token.line, token.start_col)) do
     local c = cap.capture
-    if c:find("^function") then
+    if c == "variable.parameter.internal" then
+      hl = "@variable.parameter.internal"
+      break
+    elseif not plain_fn then
+      -- only internal names are fixed for other token types
+    elseif c:find("^function") then
       return -- a real call/declaration — keep the LSP color
     elseif c == "variable.parameter" then
       hl = "@variable.parameter"
