@@ -126,7 +126,41 @@ local function apply_xcode_semantics()
   set({ "@attribute", "@variable.builtin" }, { fg = xc.attribute })
   set({ "@macro", "@keyword.directive" }, { fg = xc.macro })
 
+  -- Argument labels at call sites (`foo(with: x)`) are plain text in Xcode.
+  local normal = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
+  set({ "XcodeArgLabel" }, { fg = normal.fg })
+
   apply_explorer_theme()
+end
+
+-- sourcekit-lsp emits argument labels (`func f(person name: String)`,
+-- `f(person: x)`) as plain `function` semantic tokens — the same type as a
+-- real function call — so they'd get the green "call" color. Use Treesitter
+-- to tell them apart and recolor: declaration labels → parameter blue,
+-- call-site labels → plain text.
+local function fix_swift_argument_labels(args)
+  local token = args.data.token
+  if token.type ~= "function" or next(token.modifiers) ~= nil then
+    return
+  end
+  if vim.bo[args.buf].filetype ~= "swift" then
+    return
+  end
+  local hl
+  for _, cap in ipairs(vim.treesitter.get_captures_at_pos(args.buf, token.line, token.start_col)) do
+    local c = cap.capture
+    if c:find("^function") then
+      return -- a real call/declaration — keep the LSP color
+    elseif c == "variable.parameter" then
+      hl = "@variable.parameter"
+    elseif c == "variable.member" then
+      hl = "XcodeArgLabel"
+    end
+  end
+  if hl then
+    -- 128 > default semantic-token priorities (125–127)
+    vim.lsp.semantic_tokens.highlight_token(token, args.buf, args.data.client_id, hl, { priority = 128 })
+  end
 end
 
 return {
@@ -141,6 +175,10 @@ return {
       vim.api.nvim_create_autocmd("ColorScheme", {
         pattern = "xcode*",
         callback = apply_xcode_semantics,
+      })
+      vim.api.nvim_create_autocmd("LspTokenUpdate", {
+        group = vim.api.nvim_create_augroup("xcode_swift_arg_labels", { clear = true }),
+        callback = fix_swift_argument_labels,
       })
     end,
   },
